@@ -838,13 +838,33 @@ class FleetAPIHandler(http.server.BaseHTTPRequestHandler):
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000
 
+    # Suporte a --db para banco persistente
+    db_file = None
+    for i, arg in enumerate(sys.argv):
+        if arg == "--db" and i + 1 < len(sys.argv):
+            db_file = sys.argv[i + 1]
+
     print("=" * 60)
     print("  FLEET ROUTE OPTIMIZER - Standalone Server")
-    print("  Zero dependencies | SQLite in-memory | Pure Python")
+    print("  Zero dependencies | SQLite | Pure Python")
     print("=" * 60)
 
-    init_db()
-    seed_data()
+    global db
+    if db_file and os.path.exists(db_file):
+        db.close()
+        db = sqlite3.connect(db_file, check_same_thread=False)
+        db.row_factory = sqlite3.Row
+        db.execute("PRAGMA journal_mode=WAL")
+        db.execute("PRAGMA foreign_keys=ON")
+        count_drivers = db.execute("SELECT COUNT(*) FROM drivers").fetchone()[0]
+        count_del = db.execute("SELECT COUNT(*) FROM deliveries").fetchone()[0]
+        count_inc = db.execute("SELECT COUNT(*) FROM incidents").fetchone()[0]
+        count_routes = db.execute("SELECT COUNT(*) FROM routes").fetchone()[0]
+        print(f"\n[DB] Usando banco persistente: {db_file}")
+        print(f"     {count_drivers} motoristas | {count_del} entregas | {count_inc} incidentes | {count_routes} rotas")
+    else:
+        init_db()
+        seed_data()
 
     print(f"\n[SERVER] Rodando em http://localhost:{port}")
     print(f"[SERVER] API docs: http://localhost:{port}/health")
