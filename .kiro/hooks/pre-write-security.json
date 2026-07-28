@@ -1,0 +1,70 @@
+{
+  "name": "pre-write-security",
+  "description": "Varredura de segurança OWASP executada antes de cada escrita em disco. Verifica secrets expostos, padrões inseguros e vulnerabilidades conhecidas.",
+  "trigger": {
+    "event": "pre-write",
+    "filePatterns": ["**/*"]
+  },
+  "enabled": true,
+  "checks": [
+    {
+      "id": "no-hardcoded-secrets",
+      "description": "Rejeitar qualquer segredo hardcoded (API keys, tokens, senhas)",
+      "severity": "error",
+      "patterns": [
+        "(?i)(api[_-]?key|secret|password|token|private[_-]?key)\\s*[:=]\\s*['\"][^'\"]{8,}['\"]"
+      ],
+      "action": "block",
+      "message": "Segredo detectado em texto claro. Use variáveis de ambiente ou vault."
+    },
+    {
+      "id": "no-sql-injection",
+      "description": "Detectar concatenação direta em queries SQL",
+      "severity": "warning",
+      "patterns": [
+        "(?i)(execute|query|raw)\\s*\\(.*\\+.*\\)",
+        "(?i)f['\"].*SELECT.*WHERE.*{.*}.*['\"]"
+      ],
+      "action": "warn",
+      "message": "Possível SQL injection. Use prepared statements/parameterized queries."
+    },
+    {
+      "id": "no-eval-exec",
+      "description": "Bloquear uso de eval/exec em código de produção",
+      "severity": "error",
+      "patterns": [
+        "\\beval\\s*\\(",
+        "\\bexec\\s*\\("
+      ],
+      "excludePatterns": ["**/test/**", "**/*_test.*", "**/*.spec.*"],
+      "action": "block",
+      "message": "Uso de eval/exec é proibido em código de produção."
+    },
+    {
+      "id": "no-insecure-http",
+      "description": "Alertar sobre uso de HTTP sem TLS",
+      "severity": "warning",
+      "patterns": [
+        "http://(?!localhost|127\\.0\\.0\\.1|0\\.0\\.0\\.0)"
+      ],
+      "action": "warn",
+      "message": "URL HTTP detectada. Use HTTPS para comunicações externas."
+    }
+  ],
+  "config": {
+    "timeout_ms": 5000,
+    "fail_on_error": true,
+    "fail_on_warning": false,
+    "exclude_paths": [
+      "node_modules/**",
+      ".git/**",
+      "vendor/**",
+      "dist/**",
+      "build/**"
+    ]
+  },
+  "_placeholder_notes": {
+    "customize": "Adapte os patterns e severidades ao stack escolhido para o projeto.",
+    "add_checks": "Adicione checks específicos da linguagem/framework quando definido."
+  }
+}
