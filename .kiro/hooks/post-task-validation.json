@@ -1,0 +1,79 @@
+{
+  "name": "post-task-validation",
+  "description": "Disparador assíncrono de validação pós-tarefa. Executa testes relevantes, linting e verificações de integridade após conclusão de cada task.",
+  "trigger": {
+    "event": "post-task",
+    "conditions": {
+      "task_status": "completed",
+      "file_changed": true
+    }
+  },
+  "enabled": true,
+  "actions": [
+    {
+      "id": "run-affected-tests",
+      "description": "Executar testes afetados pelas mudanças realizadas na task",
+      "type": "command",
+      "command": "{{TEST_RUNNER}} {{TEST_ARGS}}",
+      "timeout_ms": 120000,
+      "on_failure": "report",
+      "placeholders": {
+        "TEST_RUNNER": "pytest | jest | dunit | dotnet test | go test",
+        "TEST_ARGS": "--affected | --changed | --filter=<escopo>"
+      }
+    },
+    {
+      "id": "run-linter",
+      "description": "Executar linter/formatter nos arquivos modificados",
+      "type": "command",
+      "command": "{{LINTER}} {{LINT_ARGS}}",
+      "timeout_ms": 30000,
+      "on_failure": "warn",
+      "placeholders": {
+        "LINTER": "eslint | ruff | pylint | delphilsp | golangci-lint",
+        "LINT_ARGS": "--fix --files-changed"
+      }
+    },
+    {
+      "id": "check-coverage-delta",
+      "description": "Verificar se cobertura não regrediu após a mudança",
+      "type": "command",
+      "command": "{{COVERAGE_TOOL}} --check-delta --min-delta=0",
+      "timeout_ms": 60000,
+      "on_failure": "warn",
+      "placeholders": {
+        "COVERAGE_TOOL": "coverage | nyc | gcov"
+      }
+    },
+    {
+      "id": "validate-contracts",
+      "description": "Verificar que contratos de API não foram quebrados",
+      "type": "command",
+      "command": "{{CONTRACT_VALIDATOR}}",
+      "timeout_ms": 30000,
+      "on_failure": "report",
+      "condition": "file_matches('**/api/**', '**/contracts/**', '**/*.openapi.*')",
+      "placeholders": {
+        "CONTRACT_VALIDATOR": "openapi-diff | pact-verify | graphql-inspector"
+      }
+    }
+  ],
+  "reporting": {
+    "output": "inline",
+    "summary": true,
+    "notify_on_failure": true
+  },
+  "config": {
+    "async": true,
+    "max_retries": 1,
+    "exclude_paths": [
+      "docs/**",
+      "*.md",
+      ".kiro/**"
+    ]
+  },
+  "_placeholder_notes": {
+    "customize": "Substitua os {{PLACEHOLDERS}} pelo ferramental do seu projeto.",
+    "languages_supported": "Python (pytest), JS/TS (jest/vitest), Delphi (DUnit), .NET (xunit/nunit), Go (go test)"
+  }
+}
