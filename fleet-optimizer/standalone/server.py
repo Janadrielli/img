@@ -844,6 +844,12 @@ def main():
         if arg == "--db" and i + 1 < len(sys.argv):
             db_file = sys.argv[i + 1]
 
+    # Auto-detectar fleet_demo.db na mesma pasta se nenhum --db foi passado
+    if not db_file:
+        auto_db = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])), "fleet_demo.db")
+        if os.path.exists(auto_db):
+            db_file = auto_db
+
     print("=" * 60)
     print("  FLEET ROUTE OPTIMIZER - Standalone Server")
     print("  Zero dependencies | SQLite | Pure Python")
@@ -860,9 +866,10 @@ def main():
         count_del = db.execute("SELECT COUNT(*) FROM deliveries").fetchone()[0]
         count_inc = db.execute("SELECT COUNT(*) FROM incidents").fetchone()[0]
         count_routes = db.execute("SELECT COUNT(*) FROM routes").fetchone()[0]
-        print(f"\n[DB] Usando banco persistente: {db_file}")
+        print(f"\n[DB] Banco carregado: {db_file}")
         print(f"     {count_drivers} motoristas | {count_del} entregas | {count_inc} incidentes | {count_routes} rotas")
     else:
+        print("\n[DB] Nenhum banco encontrado - criando em memória com dados de exemplo")
         init_db()
         seed_data()
 
